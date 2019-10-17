@@ -1,66 +1,94 @@
-#include <Arduino.h>
-#include <MD_TCS230.h>
+#include "pitches.h"
+#include "button.h"
+#include "buzzer.h"
 
-#define  S0_OUT  2
-#define  S1_OUT  3
-#define  S2_OUT  4
-#define  S3_OUT  5
+#define BUZZER_PIN_P1 9 //Player 1 buzzer pin
+#define BUZZER_PIN_P2 7 //Player 2 buzzer pin
 
-#define R_OUT 6
-#define G_OUT 7
-#define B_OUT 8
+#define BUTTON_PIN_P1 10 //Player 1 button pin
+#define BUTTON_PIN_P2 8 //Player 2 button pin
 
-MD_TCS230 colorSensor(S2_OUT, S3_OUT, S0_OUT, S1_OUT);
+#define RED_LIGHT_PIN 6
+#define GREEN_LIGHT_PIN 5
+#define BLUE_LIGHT_PIN 4
 
-void setup()
-{
-    Serial.begin(115200);
-    Serial.println("Started!");
+enum GameState{
+ gameStarted,
+ gameVictory,
+ gameReset
+};
 
-    sensorData whiteCalibration;
-    whiteCalibration.value[TCS230_RGB_R] = 0;
-    whiteCalibration.value[TCS230_RGB_G] = 0;
-    whiteCalibration.value[TCS230_RGB_B] = 0;
+GameState gameState = gameReset;
+Buzzer buzzerWinner(BUZZER_PIN_P1);
+Button buttonP1(BUTTON_PIN_P1);
+Button buttonP2(BUTTON_PIN_P2);
+uint64_t melodyStarted = 0;
 
-    sensorData blackCalibration;
-    blackCalibration.value[TCS230_RGB_R] = 0;
-    blackCalibration.value[TCS230_RGB_G] = 0;
-    blackCalibration.value[TCS230_RGB_B] = 0;
+int notes[] = {NOTE_G3, NOTE_SILENCE, NOTE_G3, NOTE_SILENCE, NOTE_G3, NOTE_SILENCE, NOTE_DS3, NOTE_SILENCE};
+double durations[] = {8, 8, 1, 8, 1, 8, 1, 24};
+int melodyLength = 8;
+int melodyDurationInMillis = 5900;
 
-    colorSensor.begin();
-    colorSensor.setDarkCal(&blackCalibration);
-    colorSensor.setWhiteCal(&whiteCalibration);
-
-    pinMode(R_OUT, OUTPUT);
-    pinMode(G_OUT, OUTPUT);
-    pinMode(B_OUT, OUTPUT);
+void setup() {
+    buzzerWinner.setMelody(notes, durations, melodyLength);
+    pinMode(RED_LIGHT_PIN, OUTPUT);
+    pinMode(GREEN_LIGHT_PIN, OUTPUT);
+    pinMode(BLUE_LIGHT_PIN, OUTPUT);
+    
 }
 
-void loop() 
-{
-    colorData rgb;
-    colorSensor.read();
-
-    while (!colorSensor.available());
-
-    colorSensor.getRGB(&rgb);
-    print_rgb(rgb);
-    set_rgb_led(rgb);
+void loop(){
+  
+  switch(gameState)
+  {
+    case gameStarted:
+      if(buttonP1.wasPressed()){
+        buzzerWinner.setBuzzerPin(BUZZER_PIN_P1);
+        gameState = gameVictory;
+        set_rgb(0, 0, 0);
+        buzzerWinner.turnSoundOn();
+        melodyStarted = millis();
+      }
+      if(buttonP2.wasPressed()){
+        buzzerWinner.setBuzzerPin(BUZZER_PIN_P2);
+        gameState = gameVictory;
+        set_rgb(0, 0, 0);
+        buzzerWinner.turnSoundOn();
+        melodyStarted = millis();
+      }
+      break;
+      
+    case gameVictory:
+      buzzerWinner.playSound();
+      if (millis() - melodyStarted < melodyDurationInMillis)
+        buzzerWinner.playSound();
+      else
+        gameState = gameReset;
+      break;
+      
+    case gameReset:
+      endGame();
+      startGame();
+      break;
+  }
 }
 
-void print_rgb(colorData rgb)
-{
-  Serial.print(rgb.value[TCS230_RGB_R]);
-  Serial.print(" ");
-  Serial.print(rgb.value[TCS230_RGB_G]);
-  Serial.print(" ");
-  Serial.print(rgb.value[TCS230_RGB_B]);
-  Serial.println();
+void startGame(){
+  set_rgb(0, 255, 0);
+  delay(1000);
+  set_rgb(0, 0, 0);
+  delay(random(20, 50) * 100);
+  set_rgb(255, 0, 0);
+  gameState = gameStarted;  
 }
 
-void set_rgb_led(colorData rgb)
-{
-    analogWrite(R_OUT, 255 - rgb.value[TCS230_RGB_R]);
-    analogWrite(G_OUT, 255 - rgb.value[TCS230_RGB_G]);
-    analogWrite(B_OUT, 255 - rgb.value[TCS230_RGB_B]);
+void endGame() {
+  buzzerWinner.turnSoundOff();  
+}
+
+void set_rgb(int red_light_value, int green_light_value, int blue_light_value)
+ {
+  analogWrite(RED_LIGHT_PIN, 255 - red_light_value);
+  analogWrite(GREEN_LIGHT_PIN, 255 - green_light_value);
+  analogWrite(BLUE_LIGHT_PIN, 255 - blue_light_value);
 }
