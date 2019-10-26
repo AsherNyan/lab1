@@ -13,12 +13,12 @@
 #define BLUE_LIGHT_PIN 4
 
 enum GameState{
- gameStarted,
- gameVictory,
- gameReset
+ GAME_STARTED,
+ GAME_VICTORY,
+ GAME_RESET
 };
 
-GameState gameState = gameReset;
+GameState gameState = GAME_RESET;
 Buzzer buzzerWinner(BUZZER_PIN_P1);
 Button buttonP1(BUTTON_PIN_P1);
 Button buttonP2(BUTTON_PIN_P2);
@@ -41,32 +41,32 @@ void loop(){
   
   switch(gameState)
   {
-    case gameStarted:
+    case GAME_STARTED:
       if(buttonP1.wasPressed()){
         buzzerWinner.setBuzzerPin(BUZZER_PIN_P1);
-        gameState = gameVictory;
+        gameState = GAME_VICTORY;
         set_rgb(0, 0, 0);
         buzzerWinner.turnSoundOn();
         melodyStarted = millis();
       }
       if(buttonP2.wasPressed()){
         buzzerWinner.setBuzzerPin(BUZZER_PIN_P2);
-        gameState = gameVictory;
+        gameState = GAME_VICTORY;
         set_rgb(0, 0, 0);
         buzzerWinner.turnSoundOn();
         melodyStarted = millis();
       }
       break;
       
-    case gameVictory:
+    case GAME_VICTORY:
       buzzerWinner.playSound();
       if (millis() - melodyStarted < melodyDurationInMillis)
         buzzerWinner.playSound();
       else
-        gameState = gameReset;
+        gameState = GAME_RESET;
       break;
       
-    case gameReset:
+    case GAME_RESET:
       endGame();
       startGame();
       break;
@@ -79,7 +79,7 @@ void startGame(){
   set_rgb(0, 0, 0);
   delay(random(20, 50) * 100);
   set_rgb(255, 0, 0);
-  gameState = gameStarted;  
+  gameState = GAME_STARTED;  
 }
 
 void endGame() {
